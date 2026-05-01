@@ -1,5 +1,6 @@
 import Header from "./Header";
 import HeroSection from "./HeroSection";
+import JobSeekerSection from "./JobSeekerSection";
 
 const LandingPage = () => {
   return (
@@ -7,6 +8,7 @@ const LandingPage = () => {
       <Header />
       <main>
         <HeroSection />
+        <JobSeekerSection />
       </main>
     </>
   );
