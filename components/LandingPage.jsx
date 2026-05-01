@@ -2,6 +2,7 @@ import Header from "./Header";
 import HeroSection from "./HeroSection";
 import JobSeekerSection from "./JobSeekerSection";
 import RecruiterSection from "./RecruiterSection";
+import TrustSection from "./TrustSection";
 
 const LandingPage = () => {
   return (
@@ -11,6 +12,7 @@ const LandingPage = () => {
         <HeroSection />
         <JobSeekerSection />
         <RecruiterSection />
+        <TrustSection />
       </main>
     </>
   );
