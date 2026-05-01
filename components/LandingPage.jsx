@@ -1,3 +1,4 @@
+import FinalCTA from "./FinalCTA";
 import Header from "./Header";
 import HeroSection from "./HeroSection";
 import JobSeekerSection from "./JobSeekerSection";
@@ -13,6 +14,7 @@ const LandingPage = () => {
         <JobSeekerSection />
         <RecruiterSection />
         <TrustSection />
+        <FinalCTA />
       </main>
     </>
   );
