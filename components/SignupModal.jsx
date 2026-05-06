@@ -1,0 +1,258 @@
+const signupHighlights = [
+  "Get matched to roles based on your real experience",
+  "AI parses your resume into a structured talent profile",
+  "Track every application from applied to offer in one place",
+];
+
+const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
+  if (!isOpen) {
+    return null;
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
+        <div
+          className="relative grid w-full max-w-[980px] overflow-hidden rounded-[32px] border border-white/60 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.18)] lg:grid-cols-[0.9fr_1.1fr]"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-5 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-500 shadow-md ring-1 ring-slate-200 transition hover:bg-slate-100 hover:text-slate-900"
+            aria-label="Close signup modal"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M4.28 3.22a.75.75 0 0 0-1.06 1.06L8.94 10l-5.72 5.72a.75.75 0 1 0 1.06 1.06L10 11.06l5.72 5.72a.75.75 0 1 0 1.06-1.06L11.06 10l5.72-5.72a.75.75 0 0 0-1.06-1.06L10 8.94 4.28 3.22Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+
+          <div className="flex flex-col justify-center bg-gradient-to-br from-emerald-600 via-teal-600 to-indigo-600 px-7 py-8 text-white sm:px-10 sm:py-10 lg:min-h-[640px]">
+            <div className="max-w-sm">
+              <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50">
+                Create your account
+              </div>
+
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-[42px] sm:leading-[1.05]">
+                Build a profile recruiters can actually understand.
+              </h2>
+
+              <p className="mt-4 text-sm leading-7 text-emerald-50/90 sm:text-base">
+                Join in under a minute. Upload your resume once and we’ll keep
+                matching you with relevant roles every week.
+              </p>
+
+              <div className="mt-8 space-y-4">
+                {signupHighlights.map((item, index) => (
+                  <div key={item} className="flex items-start gap-4">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/12 text-sm font-semibold text-white">
+                      0{index + 1}
+                    </span>
+                    <p className="text-sm leading-7 text-emerald-50 sm:text-[15px]">
+                      {item}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 border-t border-white/15 pt-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50">
+                  Free for job seekers
+                </p>
+                <p className="mt-3 text-sm leading-7 text-emerald-50/90">
+                  No credit card required. Your resume and profile data stay
+                  private until you choose to apply.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center bg-white px-7 py-8 sm:px-10 sm:py-10">
+            <div className="mx-auto w-full max-w-md">
+              <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                Get started
+              </div>
+
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-slate-900">
+                Create your account
+              </h2>
+
+              <p className="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
+                Set up your profile to unlock relevance-first job matching.
+              </p>
+
+              <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
+                <div>
+                  <label
+                    htmlFor="fullName"
+                    className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
+                  >
+                    Full Name
+                  </label>
+                  <input
+                    id="fullName"
+                    type="text"
+                    placeholder="Jane Doe"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="signup-email"
+                    className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
+                  >
+                    Email Address
+                  </label>
+                  <input
+                    id="signup-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="signup-password"
+                      className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
+                    >
+                      Password
+                    </label>
+                    <input
+                      id="signup-password"
+                      type="password"
+                      placeholder="At least 6 characters"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="confirmPassword"
+                      className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
+                    >
+                      Confirm
+                    </label>
+                    <input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Re-enter password"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    I am a
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="flex cursor-pointer flex-col rounded-2xl border border-indigo-500 bg-indigo-50/60 px-4 py-3 ring-2 ring-indigo-100">
+                      <input
+                        type="radio"
+                        name="role"
+                        value="job_seeker"
+                        defaultChecked
+                        className="sr-only"
+                      />
+                      <span className="text-sm font-semibold text-slate-900">
+                        Job Seeker
+                      </span>
+                      <span className="mt-1 text-xs text-slate-500">
+                        Looking for a role
+                      </span>
+                    </label>
+
+                    <label
+                      className="flex cursor-not-allowed flex-col rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 opacity-60"
+                      title="Recruiter signup coming soon"
+                    >
+                      <input
+                        type="radio"
+                        name="role"
+                        value="recruiter"
+                        disabled
+                        className="sr-only"
+                      />
+                      <span className="text-sm font-semibold text-slate-500">
+                        Recruiter
+                      </span>
+                      <span className="mt-1 text-xs text-slate-400">
+                        Coming soon
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <label className="flex items-start gap-3 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>
+                    I agree to the{" "}
+                    <a
+                      href="#"
+                      className="font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      Terms of Service
+                    </a>{" "}
+                    and{" "}
+                    <a
+                      href="#"
+                      className="font-medium text-indigo-600 hover:text-indigo-700"
+                    >
+                      Privacy Policy
+                    </a>
+                    .
+                  </span>
+                </label>
+
+                <button
+                  type="submit"
+                  className="flex h-12 w-full items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700"
+                >
+                  Create Account
+                </button>
+              </form>
+
+              <div className="mt-6 border-t border-slate-200 pt-5">
+                <p className="text-sm text-slate-600">
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={onSignInClick}
+                    className="font-semibold text-indigo-600 transition hover:text-indigo-700"
+                  >
+                    Sign In
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SignupModal;

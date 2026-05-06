@@ -1,7 +1,7 @@
 import MetricCard from "./MetricCard";
 import Tag from "./Tag";
 
-const HeroSection = () => {
+const HeroSection = ({ onUploadResumeClick }) => {
   return (
     <section className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8">
       <div className="rounded-3xl border border-slate-200 bg-white p-8">
@@ -19,10 +19,14 @@ const HeroSection = () => {
         </p>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <button className="rounded-full bg-indigo-600 px-5 py-3 font-medium text-white">
+          <button
+            type="button"
+            onClick={onUploadResumeClick}
+            className="rounded-full bg-indigo-600 px-5 py-3 font-medium text-white transition hover:bg-indigo-700 hover:cursor-pointer"
+          >
             Upload Resume to Match
           </button>
-          <button className="rounded-full border border-slate-300 px-5 py-3 font-medium text-slate-900">
+          <button className="rounded-full border border-slate-300 px-5 py-3 font-medium text-slate-900 transition hover:border-slate-400 hover:bg-slate-50">
             Post a Job
           </button>
         </div>
