@@ -1,17 +1,51 @@
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+
 const loginHighlights = [
   "Resume parsed into skills, experience, and job signals",
   "Role matching based on relevance, not just exact keywords",
   "Clear fit explanations before you spend time applying",
 ];
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting, isSubmitSuccessful },
+  } = useForm({
+    mode: "onTouched",
+    defaultValues: {
+      email: "",
+      password: "",
+      rememberMe: true,
+    },
+  });
+
+  useEffect(() => {
+    if (!isOpen) {
+      reset();
+    }
+  }, [isOpen, reset]);
+
   if (!isOpen) {
     return null;
   }
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const onSubmit = async (values) => {
+    // Replace with real auth call. Simulate latency to showcase isSubmitting state.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    console.log("[LoginModal] submit", values);
   };
+
+  const inputClass = (hasError) =>
+    `w-full rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-4 ${
+      hasError
+        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
+        : "border-slate-200 focus:border-indigo-500 focus:ring-indigo-100"
+    }`;
 
   return (
     <div
@@ -20,7 +54,7 @@ const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
     >
       <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
         <div
-          className="relative grid w-full max-w-[960px] overflow-hidden rounded-[32px] border border-white/60 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.18)] lg:grid-cols-[0.9fr_1.1fr]"
+          className="relative grid w-full max-w-240 overflow-hidden rounded-4xl border border-white/60 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.18)] lg:grid-cols-[0.9fr_1.1fr]"
           onClick={(event) => event.stopPropagation()}
         >
           <button
@@ -44,7 +78,7 @@ const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
             </svg>
           </button>
 
-          <div className="flex flex-col justify-center bg-gradient-to-br from-indigo-700 via-indigo-600 to-sky-500 px-7 py-8 text-white sm:px-10 sm:py-10 lg:min-h-[620px]">
+          <div className="flex flex-col justify-center bg-linear-to-br from-indigo-700 via-indigo-600 to-sky-500 px-7 py-8 text-white sm:px-10 sm:py-10 lg:min-h-[620px]">
             <div className="max-w-sm">
               <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-100">
                 Smart job matching
@@ -98,35 +132,67 @@ const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
                 Upload your resume and move straight into smarter job discovery.
               </p>
 
-              <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+              <form
+                className="mt-8 space-y-5"
+                onSubmit={handleSubmit(onSubmit)}
+                noValidate
+              >
                 <div>
                   <label
-                    htmlFor="email"
+                    htmlFor="login-email"
                     className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
                   >
                     Email Address
                   </label>
                   <input
-                    id="email"
+                    id="login-email"
                     type="email"
                     placeholder="you@example.com"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                    autoComplete="email"
+                    aria-invalid={errors.email ? "true" : "false"}
+                    className={inputClass(Boolean(errors.email))}
+                    {...register("email", {
+                      required: "Email is required",
+                      pattern: {
+                        value: EMAIL_PATTERN,
+                        message: "Enter a valid email address",
+                      },
+                    })}
                   />
+                  {errors.email && (
+                    <p className="mt-2 text-xs font-medium text-rose-600">
+                      {errors.email.message}
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label
-                    htmlFor="password"
+                    htmlFor="login-password"
                     className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500"
                   >
                     Password
                   </label>
                   <input
-                    id="password"
+                    id="login-password"
                     type="password"
                     placeholder="Enter your password"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                    autoComplete="current-password"
+                    aria-invalid={errors.password ? "true" : "false"}
+                    className={inputClass(Boolean(errors.password))}
+                    {...register("password", {
+                      required: "Password is required",
+                      minLength: {
+                        value: 6,
+                        message: "Password must be at least 6 characters",
+                      },
+                    })}
                   />
+                  {errors.password && (
+                    <p className="mt-2 text-xs font-medium text-rose-600">
+                      {errors.password.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between gap-4">
@@ -134,6 +200,7 @@ const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
                     <input
                       type="checkbox"
                       className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      {...register("rememberMe")}
                     />
                     Keep me signed in
                   </label>
@@ -145,11 +212,18 @@ const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
                   </button>
                 </div>
 
+                {isSubmitSuccessful && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    Signed in successfully.
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="flex h-12 w-full items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700"
+                  disabled={isSubmitting}
+                  className="flex h-12 w-full items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Sign In
+                  {isSubmitting ? "Signing in..." : "Sign In"}
                 </button>
               </form>
 
@@ -159,7 +233,7 @@ const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
                   <button
                     type="button"
                     onClick={onRegisterClick}
-                    className="font-semibold text-indigo-600 transition hover:text-indigo-700"
+                    className="font-semibold text-indigo-600 transition hover:text-indigo-700 hover:cursor-pointer"
                   >
                     Register Now
                   </button>

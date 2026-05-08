@@ -1,17 +1,58 @@
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+
 const signupHighlights = [
   "Get matched to roles based on your real experience",
   "AI parses your resume into a structured talent profile",
   "Track every application from applied to offer in one place",
 ];
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { errors, isSubmitting, isSubmitSuccessful },
+  } = useForm({
+    mode: "onTouched",
+    defaultValues: {
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      role: "job_seeker",
+      acceptTerms: false,
+    },
+  });
+
+  const selectedRole = watch("role");
+  const passwordValue = watch("password");
+
+  useEffect(() => {
+    if (!isOpen) {
+      reset();
+    }
+  }, [isOpen, reset]);
+
   if (!isOpen) {
     return null;
   }
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const onSubmit = async (values) => {
+    // Replace with real registration call. Simulated latency for isSubmitting state.
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    console.log("[SignupModal] submit", values);
   };
+
+  const inputClass = (hasError) =>
+    `w-full rounded-2xl border bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-4 ${
+      hasError
+        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
+        : "border-slate-200 focus:border-indigo-500 focus:ring-indigo-100"
+    }`;
 
   return (
     <div
@@ -20,7 +61,7 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
     >
       <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
         <div
-          className="relative grid w-full max-w-[980px] overflow-hidden rounded-[32px] border border-white/60 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.18)] lg:grid-cols-[0.9fr_1.1fr]"
+          className="relative grid w-full max-w-245 overflow-hidden rounded-4xl border border-white/60 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.18)] lg:grid-cols-[0.9fr_1.1fr]"
           onClick={(event) => event.stopPropagation()}
         >
           <button
@@ -44,7 +85,7 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
             </svg>
           </button>
 
-          <div className="flex flex-col justify-center bg-gradient-to-br from-emerald-600 via-teal-600 to-indigo-600 px-7 py-8 text-white sm:px-10 sm:py-10 lg:min-h-[640px]">
+          <div className="flex flex-col justify-center bg-linear-to-br from-emerald-600 via-teal-600 to-indigo-600 px-7 py-8 text-white sm:px-10 sm:py-10 lg:min-h-[640px]">
             <div className="max-w-sm">
               <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-50">
                 Create your account
@@ -98,7 +139,11 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                 Set up your profile to unlock relevance-first job matching.
               </p>
 
-              <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
+              <form
+                className="mt-7 space-y-4"
+                onSubmit={handleSubmit(onSubmit)}
+                noValidate
+              >
                 <div>
                   <label
                     htmlFor="fullName"
@@ -110,8 +155,26 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                     id="fullName"
                     type="text"
                     placeholder="Jane Doe"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                    autoComplete="name"
+                    aria-invalid={errors.fullName ? "true" : "false"}
+                    className={inputClass(Boolean(errors.fullName))}
+                    {...register("fullName", {
+                      required: "Full name is required",
+                      minLength: {
+                        value: 2,
+                        message: "Name must be at least 2 characters",
+                      },
+                      maxLength: {
+                        value: 60,
+                        message: "Name must be 60 characters or less",
+                      },
+                    })}
                   />
+                  {errors.fullName && (
+                    <p className="mt-2 text-xs font-medium text-rose-600">
+                      {errors.fullName.message}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -125,8 +188,22 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                     id="signup-email"
                     type="email"
                     placeholder="you@example.com"
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                    autoComplete="email"
+                    aria-invalid={errors.email ? "true" : "false"}
+                    className={inputClass(Boolean(errors.email))}
+                    {...register("email", {
+                      required: "Email is required",
+                      pattern: {
+                        value: EMAIL_PATTERN,
+                        message: "Enter a valid email address",
+                      },
+                    })}
                   />
+                  {errors.email && (
+                    <p className="mt-2 text-xs font-medium text-rose-600">
+                      {errors.email.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -141,8 +218,22 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                       id="signup-password"
                       type="password"
                       placeholder="At least 6 characters"
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                      autoComplete="new-password"
+                      aria-invalid={errors.password ? "true" : "false"}
+                      className={inputClass(Boolean(errors.password))}
+                      {...register("password", {
+                        required: "Password is required",
+                        minLength: {
+                          value: 6,
+                          message: "Use at least 6 characters",
+                        },
+                      })}
                     />
+                    {errors.password && (
+                      <p className="mt-2 text-xs font-medium text-rose-600">
+                        {errors.password.message}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -156,8 +247,20 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                       id="confirmPassword"
                       type="password"
                       placeholder="Re-enter password"
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
+                      autoComplete="new-password"
+                      aria-invalid={errors.confirmPassword ? "true" : "false"}
+                      className={inputClass(Boolean(errors.confirmPassword))}
+                      {...register("confirmPassword", {
+                        required: "Please confirm your password",
+                        validate: (value) =>
+                          value === passwordValue || "Passwords do not match",
+                      })}
                     />
+                    {errors.confirmPassword && (
+                      <p className="mt-2 text-xs font-medium text-rose-600">
+                        {errors.confirmPassword.message}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -166,13 +269,20 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                     I am a
                   </label>
                   <div className="grid grid-cols-2 gap-3">
-                    <label className="flex cursor-pointer flex-col rounded-2xl border border-indigo-500 bg-indigo-50/60 px-4 py-3 ring-2 ring-indigo-100">
+                    <label
+                      className={`flex cursor-pointer flex-col rounded-2xl border px-4 py-3 transition ${
+                        selectedRole === "job_seeker"
+                          ? "border-indigo-500 bg-indigo-50/60 ring-2 ring-indigo-100"
+                          : "border-slate-200 bg-white hover:border-indigo-300"
+                      }`}
+                    >
                       <input
                         type="radio"
-                        name="role"
                         value="job_seeker"
-                        defaultChecked
                         className="sr-only"
+                        {...register("role", {
+                          required: "Select an account type",
+                        })}
                       />
                       <span className="text-sm font-semibold text-slate-900">
                         Job Seeker
@@ -188,10 +298,10 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                     >
                       <input
                         type="radio"
-                        name="role"
                         value="recruiter"
                         disabled
                         className="sr-only"
+                        {...register("role")}
                       />
                       <span className="text-sm font-semibold text-slate-500">
                         Recruiter
@@ -201,37 +311,60 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                       </span>
                     </label>
                   </div>
+                  {errors.role && (
+                    <p className="mt-2 text-xs font-medium text-rose-600">
+                      {errors.role.message}
+                    </p>
+                  )}
                 </div>
 
-                <label className="flex items-start gap-3 text-sm text-slate-600">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span>
-                    I agree to the{" "}
-                    <a
-                      href="#"
-                      className="font-medium text-indigo-600 hover:text-indigo-700"
-                    >
-                      Terms of Service
-                    </a>{" "}
-                    and{" "}
-                    <a
-                      href="#"
-                      className="font-medium text-indigo-600 hover:text-indigo-700"
-                    >
-                      Privacy Policy
-                    </a>
-                    .
-                  </span>
-                </label>
+                <div>
+                  <label className="flex items-start gap-3 text-sm text-slate-600">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      aria-invalid={errors.acceptTerms ? "true" : "false"}
+                      {...register("acceptTerms", {
+                        required: "You must accept the terms to continue",
+                      })}
+                    />
+                    <span>
+                      I agree to the{" "}
+                      <a
+                        href="#"
+                        className="font-medium text-indigo-600 hover:text-indigo-700"
+                      >
+                        Terms of Service
+                      </a>{" "}
+                      and{" "}
+                      <a
+                        href="#"
+                        className="font-medium text-indigo-600 hover:text-indigo-700"
+                      >
+                        Privacy Policy
+                      </a>
+                      .
+                    </span>
+                  </label>
+                  {errors.acceptTerms && (
+                    <p className="mt-2 text-xs font-medium text-rose-600">
+                      {errors.acceptTerms.message}
+                    </p>
+                  )}
+                </div>
+
+                {isSubmitSuccessful && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    Account created. Check your inbox to verify your email.
+                  </div>
+                )}
 
                 <button
                   type="submit"
-                  className="flex h-12 w-full items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700"
+                  disabled={isSubmitting}
+                  className="flex h-12 w-full items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  Create Account
+                  {isSubmitting ? "Creating account..." : "Create Account"}
                 </button>
               </form>
 
@@ -241,7 +374,7 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                   <button
                     type="button"
                     onClick={onSignInClick}
-                    className="font-semibold text-indigo-600 transition hover:text-indigo-700"
+                    className="font-semibold text-indigo-600 transition hover:text-indigo-700 hover:cursor-pointer"
                   >
                     Sign In
                   </button>
