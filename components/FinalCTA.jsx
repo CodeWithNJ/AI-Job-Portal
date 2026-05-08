@@ -1,4 +1,4 @@
-const FinalCTA = () => {
+const FinalCTA = ({ onUploadResumeClick }) => {
   return (
     <>
       <section className="px-4 pb-16 sm:px-6 lg:px-8">
@@ -11,7 +11,10 @@ const FinalCTA = () => {
           </p>
 
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <button className="rounded-full bg-white px-5 py-3 font-medium text-indigo-700">
+            <button
+              className="rounded-full bg-white px-5 py-3 font-medium text-indigo-700 hover:cursor-pointer"
+              onClick={onUploadResumeClick}
+            >
               Upload Resume to Match
             </button>
             <button className="rounded-full border border-indigo-300 px-5 py-3 font-medium text-white">
