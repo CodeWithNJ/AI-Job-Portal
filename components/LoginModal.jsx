@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { loginUser } from "../src/api/authApi";
+import { extractApiErrorMessage } from "../src/api/axiosClient";
 
 const loginHighlights = [
   "Resume parsed into skills, experience, and job signals",
@@ -9,12 +11,27 @@ const loginHighlights = [
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
+// Thin wrapper that controls visibility. Mounting/unmounting LoginModalContent
+// on isOpen toggles gives us a clean state reset for free without having to
+// imperatively setState inside an effect.
+const LoginModal = ({ isOpen, onClose, onRegisterClick, onLoginSuccess }) => {
+  if (!isOpen) {
+    return null;
+  }
+  return (
+    <LoginModalContent
+      onClose={onClose}
+      onRegisterClick={onRegisterClick}
+      onLoginSuccess={onLoginSuccess}
+    />
+  );
+};
+
+const LoginModalContent = ({ onClose, onRegisterClick, onLoginSuccess }) => {
   const {
     register,
     handleSubmit,
-    reset,
-    formState: { errors, isSubmitting, isSubmitSuccessful },
+    formState: { errors, isSubmitting },
   } = useForm({
     mode: "onTouched",
     defaultValues: {
@@ -24,20 +41,33 @@ const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
     },
   });
 
-  useEffect(() => {
-    if (!isOpen) {
-      reset();
-    }
-  }, [isOpen, reset]);
-
-  if (!isOpen) {
-    return null;
-  }
+  const [serverError, setServerError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const onSubmit = async (values) => {
-    // Replace with real auth call. Simulate latency to showcase isSubmitting state.
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    console.log("[LoginModal] submit", values);
+    setServerError(null);
+    setSuccessMessage(null);
+
+    try {
+      const response = await loginUser({
+        email: values.email,
+        password: values.password,
+      });
+
+      // The Nest response interceptor wraps payloads as
+      // { success, statusCode, message, data: { user } }.
+      const user = response?.data?.user ?? null;
+
+      setSuccessMessage(response?.message || "Signed in successfully.");
+
+      if (onLoginSuccess) {
+        onLoginSuccess(user);
+      }
+    } catch (error) {
+      setServerError(
+        extractApiErrorMessage(error, "Unable to sign in. Please try again."),
+      );
+    }
   };
 
   const inputClass = (hasError) =>
@@ -183,8 +213,8 @@ const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
                     {...register("password", {
                       required: "Password is required",
                       minLength: {
-                        value: 6,
-                        message: "Password must be at least 6 characters",
+                        value: 3,
+                        message: "Password must be at least 3 characters",
                       },
                     })}
                   />
@@ -212,17 +242,49 @@ const LoginModal = ({ isOpen, onClose, onRegisterClick }) => {
                   </button>
                 </div>
 
-                {isSubmitSuccessful && (
+                {serverError && (
+                  <div
+                    role="alert"
+                    className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+                  >
+                    {serverError}
+                  </div>
+                )}
+
+                {successMessage && !serverError && (
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                    Signed in successfully.
+                    {successMessage}
                   </div>
                 )}
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex h-12 w-full items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
                 >
+                  {isSubmitting && (
+                    <svg
+                      className="h-4 w-4 animate-spin text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
+                      />
+                    </svg>
+                  )}
                   {isSubmitting ? "Signing in..." : "Sign In"}
                 </button>
               </form>

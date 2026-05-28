@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { signupUser } from "../src/api/authApi";
+import { extractApiErrorMessage } from "../src/api/axiosClient";
 
 const signupHighlights = [
   "Get matched to roles based on your real experience",
@@ -9,13 +11,28 @@ const signupHighlights = [
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
+// Thin wrapper that controls visibility. Mounting/unmounting
+// SignupModalContent on isOpen toggles guarantees fresh internal state
+// (form values, error/success banners) every time the modal is reopened.
+const SignupModal = ({ isOpen, onClose, onSignInClick, onSignupSuccess }) => {
+  if (!isOpen) {
+    return null;
+  }
+  return (
+    <SignupModalContent
+      onClose={onClose}
+      onSignInClick={onSignInClick}
+      onSignupSuccess={onSignupSuccess}
+    />
+  );
+};
+
+const SignupModalContent = ({ onClose, onSignInClick, onSignupSuccess }) => {
   const {
     register,
     handleSubmit,
     watch,
-    reset,
-    formState: { errors, isSubmitting, isSubmitSuccessful },
+    formState: { errors, isSubmitting },
   } = useForm({
     mode: "onTouched",
     defaultValues: {
@@ -31,20 +48,53 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
   const selectedRole = watch("role");
   const passwordValue = watch("password");
 
-  useEffect(() => {
-    if (!isOpen) {
-      reset();
-    }
-  }, [isOpen, reset]);
+  const [serverError, setServerError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const redirectTimer = useRef(null);
 
-  if (!isOpen) {
-    return null;
-  }
+  useEffect(() => {
+    return () => {
+      if (redirectTimer.current) {
+        clearTimeout(redirectTimer.current);
+      }
+    };
+  }, []);
 
   const onSubmit = async (values) => {
-    // Replace with real registration call. Simulated latency for isSubmitting state.
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    console.log("[SignupModal] submit", values);
+    setServerError(null);
+    setSuccessMessage(null);
+
+    try {
+      // The backend CreateUserDto does not accept fullName/confirmPassword and
+      // the global ValidationPipe runs with forbidNonWhitelisted: true, so we
+      // only send the fields it expects.
+      await signupUser({
+        email: values.email,
+        password: values.password,
+        role: values.role,
+      });
+
+      setSuccessMessage(
+        "Account created successfully. Redirecting you to sign in...",
+      );
+
+      // Brief delay so the success state is visible before switching to the
+      // login modal.
+      redirectTimer.current = setTimeout(() => {
+        if (onSignupSuccess) {
+          onSignupSuccess();
+        } else if (onSignInClick) {
+          onSignInClick();
+        }
+      }, 900);
+    } catch (error) {
+      setServerError(
+        extractApiErrorMessage(
+          error,
+          "Unable to create your account. Please try again.",
+        ),
+      );
+    }
   };
 
   const inputClass = (hasError) =>
@@ -217,15 +267,15 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                     <input
                       id="signup-password"
                       type="password"
-                      placeholder="At least 6 characters"
+                      placeholder="At least 3 characters"
                       autoComplete="new-password"
                       aria-invalid={errors.password ? "true" : "false"}
                       className={inputClass(Boolean(errors.password))}
                       {...register("password", {
                         required: "Password is required",
                         minLength: {
-                          value: 6,
-                          message: "Use at least 6 characters",
+                          value: 3,
+                          message: "Use at least 3 characters",
                         },
                       })}
                     />
@@ -353,17 +403,49 @@ const SignupModal = ({ isOpen, onClose, onSignInClick }) => {
                   )}
                 </div>
 
-                {isSubmitSuccessful && (
+                {serverError && (
+                  <div
+                    role="alert"
+                    className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+                  >
+                    {serverError}
+                  </div>
+                )}
+
+                {successMessage && !serverError && (
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                    Account created. Check your inbox to verify your email.
+                    {successMessage}
                   </div>
                 )}
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex h-12 w-full items-center justify-center rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
                 >
+                  {isSubmitting && (
+                    <svg
+                      className="h-4 w-4 animate-spin text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
+                      />
+                    </svg>
+                  )}
                   {isSubmitting ? "Creating account..." : "Create Account"}
                 </button>
               </form>
