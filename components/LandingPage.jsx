@@ -8,12 +8,19 @@ import RecruiterSection from "./RecruiterSection";
 import SignupModal from "./SignupModal";
 import TrustSection from "./TrustSection";
 
-const LandingPage = () => {
+const LandingPage = ({ onLoginSuccess }) => {
   const [activeModal, setActiveModal] = useState(null);
 
   const openLogin = () => setActiveModal("login");
   const openSignup = () => setActiveModal("signup");
   const closeModal = () => setActiveModal(null);
+
+  const handleLoginSuccess = (user) => {
+    setActiveModal(null);
+    if (onLoginSuccess) {
+      onLoginSuccess(user);
+    }
+  };
 
   return (
     <>
@@ -31,12 +38,14 @@ const LandingPage = () => {
         isOpen={activeModal === "login"}
         onClose={closeModal}
         onRegisterClick={openSignup}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       <SignupModal
         isOpen={activeModal === "signup"}
         onClose={closeModal}
         onSignInClick={openLogin}
+        onSignupSuccess={openLogin}
       />
     </>
   );
