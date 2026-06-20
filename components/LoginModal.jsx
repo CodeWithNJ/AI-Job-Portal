@@ -63,6 +63,7 @@ const LoginModalContent = ({ onClose, onRegisterClick, onLoginSuccess }) => {
       const response = await loginUser({
         email: values.email,
         password: values.password,
+        rememberMe: values.rememberMe,
       });
 
       // The Nest response interceptor wraps payloads as
