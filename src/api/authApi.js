@@ -33,11 +33,11 @@ export const refreshSession = async () => {
   return response.data;
 };
 
-// GET /users/profile returns the currently authenticated user. Called on
+// GET /users/me returns the currently authenticated user. Called on
 // app boot so we can rehydrate the React auth state from the HttpOnly
 // cookie set by a previous "Keep me signed in" login.
 export const fetchProfile = async () => {
-  const response = await axiosClient.get("/users/profile");
+  const response = await axiosClient.get("/users/me");
   return response.data;
 };
 
