@@ -61,13 +61,14 @@ Practically, that means resume-parsed fields must always render as reviewable, e
 | **Silent token refresh**    | Response interceptor retries a 401 once via `POST /users/refresh`, with concurrent 401s collapsed into a single refresh call              |
 | **Session rehydration**     | On boot, `GET /users/me` restores the session; a dedicated loading state prevents a landing-page flicker for returning users              |
 | **Session-expiry handling** | An unrecoverable 401 dispatches a custom window event that resets app auth state                                                          |
-| **Job seeker home page**    | Authenticated placeholder shell with sign-out and "coming soon" cards                                                                     |
+| **Routing + role shell**    | `react-router` with guarded routes, per-role dashboards, shared header/layout, 404                                                        |
+| **Seeker profile editor**   | Headline, summary, location, years, skills, work history, education, work preferences — one form, sticky save, completeness meter         |
+| **Resume upload**           | Two-step signed-URL flow with progress, type/size pre-checks, stored-file metadata and parse status                                       |
 
 ### Not yet built
 
-- Profile creation and editing screens (the backend endpoints exist and are unused)
-- Resume upload UI against the signed-URL flow (the backend endpoints exist and are unused)
-- Recruiter-side experience entirely: company setup, job authoring, applicant pipelines, candidate search
+- Recruiter profile and company setup (`PATCH /profiles/me` already serves this role; only the UI is missing)
+- Recruiter-side experience: job authoring, applicant pipelines, candidate search
 - Job browsing, search, filters, recommendations, and application tracking
 - Explainability UI (matched skills, experience overlap, missing qualifications)
 - Notifications, admin console, analytics instrumentation
@@ -224,6 +225,7 @@ components/
 | `/login` | Guest | Landing page, sign-in modal open |
 | `/signup` | Guest | Landing page, registration modal open |
 | `/dashboard` | `job_seeker` | Seeker dashboard inside `AppLayout` |
+| `/profile` | `job_seeker` | Profile editor + resume upload inside `AppLayout` |
 | `/recruiter` | `recruiter` | Recruiter dashboard inside `AppLayout` |
 | `/admin` | `admin` | Admin console inside `AppLayout` |
 | `*` | — | 404 |
@@ -278,7 +280,32 @@ Two things about this are deliberate and easy to undo by accident:
 
 Signing out calls `removeQueries` on everything outside the `auth` key, so the next user on the same browser cannot see the previous user's data flash on screen.
 
-`bootstrapping` is tracked separately from `authedUser` on purpose: without it, a returning "Keep me signed in" user would see the landing page flash before the dashboard replaces it.
+### Profile editor
+
+One `react-hook-form` for the whole profile, with `useFieldArray` behind the repeatable experience and education lists and a sticky save bar — the form is long enough that a button at the bottom would be several screens from whatever was just edited. Save is disabled until the form is dirty.
+
+The API↔form translation lives in `src/profile/profileForm.js`, deliberately apart from the component, because that mapping is where the sharp edges are:
+
+- **Blank text is sent; blank numbers and enums are omitted.** Clearing a headline is a real edit that must persist, but `""` fails `@IsIn`/`@IsInt` server-side — and with implicit conversion on it would otherwise arrive as `0` and silently write a wrong value.
+- **Only DTO-declared fields are sent.** `forbidNonWhitelisted` rejects anything extra outright.
+- **`LIMITS` mirrors the backend DTO** so the user sees a length or range problem before the API does.
+
+`profileCompleteness()` powers the strength meter. It's a UI concept, not a backend one — it exists to give the user a reason to finish, which is the PRD's activation metric (profile completed plus resume uploaded).
+
+One trap worth knowing: the form is synced via react-hook-form's `values` option from a `useMemo` keyed on the profile object. Passing a freshly-built object every render would reset the form mid-edit and wipe what the user was typing.
+
+### Resume upload
+
+Two steps, both in `src/api/profileApi.js`:
+
+1. `POST /profiles/me/resume/upload-url` → a short-lived HMAC-signed URL bound to this user, key, and MIME type.
+2. `PUT` the raw bytes at that URL.
+
+Step 2 is a **bare axios call, not `axiosClient`** — and it has to stay that way. The signed token in the path is the credential, so the request must not carry auth cookies, and the `Content-Type` must be exactly the one the URL was issued for; the shared client's JSON default would earn a 415.
+
+Client-side type and size checks are courtesy only. The API re-validates the declared type, the size, *and* the file's magic bytes, so a mislabelled file is rejected server-side regardless of what the picker allowed.
+
+A successful upload invalidates rather than seeds the profile cache: the PUT returns only file metadata, and the refetch also picks up the parse status the upload resets.
 
 ### Silent refresh interceptor
 
@@ -371,7 +398,7 @@ Patterns already established in the codebase; follow them for consistency.
 
 **Styling.** Tailwind utility classes inline, no CSS modules. Tailwind 4 is configured entirely through `@tailwindcss/vite` and `src/index.css` — there is no `tailwind.config.js`. Rounded, soft-shadow surfaces (`rounded-3xl`, `border-slate-200`, `shadow-sm`) on a `bg-slate-50` page; indigo is the primary accent; slate is the neutral ramp. Note Tailwind 4 spells gradients `bg-linear-to-br`, not `bg-gradient-to-br`.
 
-**Shared primitives.** Reach for `components/ui/` before writing new markup — `Button` (primary / secondary / ghost, with a built-in loading state), `Spinner`, and `FullPageLoader`. They hold the exact classes the landing page and modals already use, so new screens inherit the look rather than approximating it. The three role dashboards are all `PlaceholderDashboard` with different copy, which is why they stay visually identical without anyone maintaining three copies.
+**Shared primitives.** Reach for `components/ui/` before writing new markup — `Button` (primary / secondary / ghost, with a built-in loading state), `Spinner`, `FullPageLoader`, `SectionCard` (the standard white card), `Field` (label + control + hint/error), `Alert` (error / success / info banners), and `formStyles.js` (`inputClass`, `labelClass`). The modals and the profile editor both import `inputClass` from that one module, which is why a field on the profile page is indistinguishable from one in the sign-up dialog. They hold the exact classes the landing page and modals already use, so new screens inherit the look rather than approximating it. The three role dashboards are all `PlaceholderDashboard` with different copy, which is why they stay visually identical without anyone maintaining three copies.
 
 **Page chrome belongs to the layout.** Authenticated pages render content only — `AppLayout` owns the `bg-slate-50` background, the header, and the `mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8` container. A page that adds its own wrapper will double the padding.
 
@@ -412,7 +439,7 @@ Worth knowing before you touch these areas.
 
 Tracks the PRD's phases, scoped to the frontend.
 
-**Phase 1 — MVP.** Routing and role-aware layouts are in place. Next: build the seeker profile editor and the resume upload experience — including a parsed-resume review UI that shows confidence and lets users correct every extracted field. Then job browsing with search and filters, a recommended-jobs feed, apply flow, and application status tracking. On the recruiter side: company setup, job authoring, the applicant pipeline with ranked candidates and shortlist/reject actions, and semantic candidate search. Every recommendation surface needs its explainability panel (matched skills, experience overlap, missing qualifications) from the start, plus event instrumentation for activation and CTR.
+**Phase 1 — MVP.** Routing, the role-aware shell, the seeker profile editor, and resume upload are in place. Still needed on the seeker side: the parsed-resume review UI that shows extraction confidence and lets users correct every field — the upload half exists, the review half waits on the backend parsing pipeline. Then job browsing with search and filters, a recommended-jobs feed, apply flow, and application status tracking. On the recruiter side: company setup, job authoring, the applicant pipeline with ranked candidates and shortlist/reject actions, and semantic candidate search. Every recommendation surface needs its explainability panel (matched skills, experience overlap, missing qualifications) from the start, plus event instrumentation for activation and CTR.
 
 **Phase 2 — Product-market fit.** Conversational career assistant for seekers (resume tips, job-fit Q&A, interview prep) and a recruiter copilot (rewrite JDs, generate screening questions, summarize pipelines). Saved searches, personalized alerts, recruiter collaboration, employer branding pages, and UI affordances that feed the ranking feedback loop — dismiss, not-interested, and shortlist signals.
 

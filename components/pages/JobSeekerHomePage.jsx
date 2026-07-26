@@ -14,9 +14,11 @@ const CARDS = [
       "Track every application from applied to interview to offer.",
   },
   {
-    title: "Profile Insights",
+    title: "Your Profile",
     description:
-      "See how recruiters perceive your profile and what to improve.",
+      "Upload your resume and keep your skills and experience current — this is what matching runs on.",
+    to: "/profile",
+    cta: "Edit profile",
   },
 ];
 

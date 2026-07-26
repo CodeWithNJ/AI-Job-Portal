@@ -4,6 +4,7 @@ import AdminHomePage from "../../components/pages/AdminHomePage";
 import JobSeekerHomePage from "../../components/pages/JobSeekerHomePage";
 import LandingPage from "../../components/pages/LandingPage";
 import NotFoundPage from "../../components/pages/NotFoundPage";
+import ProfilePage from "../../components/pages/ProfilePage";
 import RecruiterHomePage from "../../components/pages/RecruiterHomePage";
 import GuestRoute from "../../components/routes/GuestRoute";
 import ProtectedRoute from "../../components/routes/ProtectedRoute";
@@ -31,6 +32,7 @@ const AppRoutes = () => (
     <Route element={<ProtectedRoute allowedRoles={[ROLES.JOB_SEEKER]} />}>
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<JobSeekerHomePage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
     </Route>
 

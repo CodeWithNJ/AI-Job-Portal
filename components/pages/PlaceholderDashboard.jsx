@@ -1,10 +1,13 @@
+import { Link } from "react-router";
+
 /**
  * Shared scaffold for the three role dashboards until real features land.
  *
  * Structure and spacing are lifted from the original job seeker home page, so
  * the recruiter and admin views are visually consistent by construction rather
  * than by three copies of the same markup drifting apart. As each capability
- * ships, its card is replaced by a real component in the same grid slot.
+ * ships, its card gains a `to` and stops saying "coming soon" — same slot,
+ * same styling, now a real destination.
  */
 const PlaceholderDashboard = ({ eyebrow, title, description, gradient, cards }) => (
   <>
@@ -26,15 +29,27 @@ const PlaceholderDashboard = ({ eyebrow, title, description, gradient, cards }) 
       {cards.map((card) => (
         <div
           key={card.title}
-          className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+          className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition ${
+            card.to ? "hover:border-indigo-300 hover:shadow-md" : ""
+          }`}
         >
           <h3 className="text-lg font-semibold text-slate-900">{card.title}</h3>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {card.description}
           </p>
-          <p className="mt-4 text-xs font-medium uppercase tracking-[0.18em] text-indigo-600">
-            Coming soon
-          </p>
+          {card.to ? (
+            <Link
+              to={card.to}
+              className="mt-4 inline-flex items-center gap-1 text-xs font-medium uppercase tracking-[0.18em] text-indigo-600 transition hover:text-indigo-700"
+            >
+              {card.cta ?? "Open"}
+              <span aria-hidden="true">&rarr;</span>
+            </Link>
+          ) : (
+            <p className="mt-4 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+              Coming soon
+            </p>
+          )}
         </div>
       ))}
     </section>

@@ -10,7 +10,10 @@ import Button from "../ui/Button";
  * header itself.
  */
 const NAV_BY_ROLE = {
-  [ROLES.JOB_SEEKER]: [{ label: "Dashboard", to: "/dashboard" }],
+  [ROLES.JOB_SEEKER]: [
+    { label: "Dashboard", to: "/dashboard" },
+    { label: "Profile", to: "/profile" },
+  ],
   [ROLES.RECRUITER]: [{ label: "Dashboard", to: "/recruiter" }],
   [ROLES.ADMIN]: [{ label: "Console", to: "/admin" }],
 };

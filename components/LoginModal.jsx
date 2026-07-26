@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { loginUser } from "../src/api/authApi";
 import { extractApiErrorMessage } from "../src/api/axiosClient";
 import Spinner from "./ui/Spinner";
+import { inputClass } from "./ui/formStyles";
 
 const loginHighlights = [
   "Resume parsed into skills, experience, and job signals",
@@ -82,13 +83,6 @@ const LoginModalContent = ({ onClose, onRegisterClick, onLoginSuccess }) => {
       );
     }
   };
-
-  const inputClass = (hasError) =>
-    `w-full rounded-2xl border bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-4 ${
-      hasError
-        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
-        : "border-slate-200 focus:border-indigo-500 focus:ring-indigo-100"
-    }`;
 
   return (
     <div
