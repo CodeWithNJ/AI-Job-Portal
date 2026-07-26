@@ -65,7 +65,6 @@ Practically, that means resume-parsed fields must always render as reviewable, e
 
 ### Not yet built
 
-- Client-side routing (no router installed — see [Architecture](#architecture))
 - Profile creation and editing screens (the backend endpoints exist and are unused)
 - Resume upload UI against the signed-URL flow (the backend endpoints exist and are unused)
 - Recruiter-side experience entirely: company setup, job authoring, applicant pipelines, candidate search
@@ -80,13 +79,15 @@ Practically, that means resume-parsed fields must always render as reviewable, e
 
 | Concern    | Choice                                                                             |
 | ---------- | ---------------------------------------------------------------------------------- |
-| Framework  | React 19                                                                           |
-| Build tool | Vite 8 (`@vitejs/plugin-react`)                                                    |
-| Styling    | Tailwind CSS 4 via `@tailwindcss/vite` (no `tailwind.config.js` — v4 is CSS-first) |
-| Forms      | `react-hook-form` 7                                                                |
-| HTTP       | `axios` 1 with a shared configured instance                                        |
-| Language   | JavaScript (JSX), ES modules                                                       |
-| Linting    | ESLint 10 with `react-hooks` and `react-refresh` plugins                           |
+| Framework    | React 19                                                                           |
+| Build tool   | Vite 8 (`@vitejs/plugin-react`)                                                    |
+| Routing      | `react-router` 7                                                                   |
+| Server state | `@tanstack/react-query` 5                                                          |
+| Styling      | Tailwind CSS 4 via `@tailwindcss/vite` (no `tailwind.config.js` — v4 is CSS-first) |
+| Forms        | `react-hook-form` 7                                                                |
+| HTTP         | `axios` 1 with a shared configured instance                                        |
+| Language     | JavaScript (JSX), ES modules                                                       |
+| Linting      | ESLint 10 with `react-hooks` and `react-refresh` plugins                           |
 
 ---
 
@@ -162,16 +163,39 @@ public/
   icons.svg                Shared SVG sprite
 src/
   main.jsx                 React root (StrictMode)
-  App.jsx                  Auth state, session bootstrap, top-level view switch
+  App.jsx                  Composition root: query client, router, auth provider
   index.css                Tailwind entry and global styles
   App.css
   api/
     axiosClient.js         Configured axios instance, refresh interceptor, error extraction
     authApi.js             Auth endpoint wrappers
+    queryClient.js         react-query defaults (retry policy, staleness)
+  auth/
+    AuthProvider.jsx       Session state, sign-out intent, expiry handling
+    auth-context.js        Context object + the current-user cache key
+    useAuth.js             Hook every screen reads the session through
+    roles.js               Role constants, per-role home path, display name
+  routes/
+    AppRoutes.jsx          The route table
   assets/                  Images
 components/
-  LandingPage.jsx          Unauthenticated composition + modal orchestration
-  JobSeekerHomePage.jsx    Authenticated shell (placeholder dashboard)
+  layouts/
+    AppLayout.jsx          Shared chrome + page container for signed-in routes
+    AppHeader.jsx          Role-aware nav, identity, sign out
+  routes/
+    ProtectedRoute.jsx     Requires a session, optionally a role
+    GuestRoute.jsx         Public surfaces + the redirect once signed in
+  pages/
+    LandingPage.jsx        Public marketing page; path drives which modal is open
+    JobSeekerHomePage.jsx  Seeker dashboard
+    RecruiterHomePage.jsx  Recruiter dashboard
+    AdminHomePage.jsx      Admin console
+    PlaceholderDashboard.jsx  Shared scaffold behind the three dashboards
+    NotFoundPage.jsx       404
+  ui/
+    Button.jsx             primary / secondary / ghost, with loading state
+    Spinner.jsx            The one spinner
+    FullPageLoader.jsx     Whole-screen loading state
   Header.jsx               Landing nav and primary CTAs
   HeroSection.jsx          Above-the-fold value proposition
   JobSeekerSection.jsx     Seeker-side story (uses JobCard, StatusStep, Tag)
@@ -190,19 +214,25 @@ components/
 
 ## Architecture
 
-### View switching (no router yet)
+### Routing
 
-`App.jsx` renders one of three states directly, with no routing library involved:
+`react-router` with two guards wrapping everything. Adding a screen is one `<Route>` under the right role — chrome, auth, and redirects come for free.
 
-```
-bootstrapping  → full-screen "Restoring your session..." spinner
-authedUser     → <JobSeekerHomePage />
-otherwise      → <LandingPage />
-```
+| Path | Guard | Renders |
+| --- | --- | --- |
+| `/` | Guest | Landing page |
+| `/login` | Guest | Landing page, sign-in modal open |
+| `/signup` | Guest | Landing page, registration modal open |
+| `/dashboard` | `job_seeker` | Seeker dashboard inside `AppLayout` |
+| `/recruiter` | `recruiter` | Recruiter dashboard inside `AppLayout` |
+| `/admin` | `admin` | Admin console inside `AppLayout` |
+| `*` | — | 404 |
 
-`LandingPage` manages its own modal state (`null` | `"login"` | `"signup"`) rather than using URLs.
+`/`, `/login`, and `/signup` all render `LandingPage`; the path decides which modal is open. The overlay UX is unchanged, but both flows are now linkable and back-button friendly — which is what lets `ProtectedRoute` bounce someone to `/login` and have them land on a real sign-in surface.
 
-This is fine for a two-view app, but it caps growth: no deep links, no browser back/forward, no per-role dashboards. Adding `react-router` is a prerequisite for essentially every remaining feature (profile editor, job detail pages, recruiter pipelines), so it's the natural next structural change.
+**Guards are UX, not security.** Every protected route is enforced server-side by `AccessTokenGuard`/`RolesGuard`. These exist to route people somewhere sensible instead of rendering a screen that will 401. A signed-in user who opens a route for another role is redirected to their own home rather than shown an error — with three roles, a wrong-role URL is far more often a stale link than an intrusion.
+
+**Deploy note:** client-side routing needs the host to serve `index.html` for unknown paths, or a hard refresh on `/dashboard` 404s. Vite's dev server does this already; a static host needs an SPA fallback rule.
 
 ### Authentication model
 
@@ -210,17 +240,43 @@ The frontend deliberately holds **no tokens**. The backend issues HttpOnly cooki
 
 - Every request sets `withCredentials: true` and the browser attaches the cookies.
 - There is nothing to persist in `localStorage`, and therefore nothing for an XSS payload to exfiltrate.
-- `authedUser` in `App.jsx` is _display state only_ — it decides which view renders. Authorization is always enforced server-side.
+- The `user` from `useAuth()` is _display state only_. Authorization is always enforced server-side.
 
 ### Session bootstrap
+
+`AuthProvider` resolves the session once through react-query and every screen reads it via `useAuth()`:
 
 ```
 App mounts
   └─ GET /users/me
-       ├─ 200                     → hydrate authedUser, render the home page
+       ├─ 200                     → cache the user, render their dashboard
        ├─ 401 + valid refresh     → interceptor rotates tokens, replays the call, hydrates
-       └─ 401 + no valid refresh  → render the landing page
+       └─ 401 / network failure   → resolve to null and render the landing page
 ```
+
+Guards must check `isBootstrapping` before deciding anything — without it a returning user gets bounced to the landing page before their cookie has even been checked.
+
+### Two ways a session ends
+
+They look identical in state (no user) but deserve different destinations, and conflating them is a visible bug:
+
+| | Trigger | Destination | Why |
+| --- | --- | --- | --- |
+| **Deliberate** | User clicks Sign Out | `/` | They asked to leave. A sign-in prompt reads as though the sign-out failed. |
+| **Involuntary** | `auth:session-expired` from the interceptor | `/login`, with `from` remembered | They were interrupted; signing back in should return them where they were. |
+
+`AuthProvider` exposes `isSigningOut` to tell these apart, and `ProtectedRoute` picks the destination.
+
+Two things about this are deliberate and easy to undo by accident:
+
+1. **`signOut` never calls `navigate()`.** react-query delivers cache updates on a microtask, so the session clears asynchronously while `navigate()` applies synchronously. Any imperative redirect loses the race: a guard observes the new location while the session is still set, bounces back to the dashboard, and _then_ the cleared session sends the user to `/login`. Letting the guards route declaratively avoids the race entirely.
+2. **`isSigningOut` is derived during render, not stored and reset in an effect.** Resetting it on "user is now null" flips it back while the router is still mid-redirect, and `ProtectedRoute` — rendered once more on the old path with the flag already false — sends the user to `/login` anyway. It is computed as "sign-out was requested _and_ we haven't reached a public route yet."
+
+### Data fetching
+
+`@tanstack/react-query` owns server state, so screens don't hand-roll loading, error, and refetch state. Defaults live in `src/api/queryClient.js`: no retry on 4xx (the axios interceptor already handles 401 recovery, and retrying on top of it multiplies requests against a rotated token), a 30s staleness window, and no refetch on window focus.
+
+Signing out calls `removeQueries` on everything outside the `auth` key, so the next user on the same browser cannot see the previous user's data flash on screen.
 
 `bootstrapping` is tracked separately from `authedUser` on purpose: without it, a returning "Keep me signed in" user would see the landing page flash before the dashboard replaces it.
 
@@ -313,7 +369,13 @@ Only PDF and DOCX are accepted, and the backend verifies both the declared MIME 
 
 Patterns already established in the codebase; follow them for consistency.
 
-**Styling.** Tailwind utility classes inline, no CSS modules. Tailwind 4 is configured entirely through `@tailwindcss/vite` and `src/index.css` — there is no `tailwind.config.js`. Rounded, soft-shadow surfaces (`rounded-3xl`, `border-slate-200`, `shadow-sm`) on a `bg-slate-50` page; indigo is the primary accent; slate is the neutral ramp.
+**Styling.** Tailwind utility classes inline, no CSS modules. Tailwind 4 is configured entirely through `@tailwindcss/vite` and `src/index.css` — there is no `tailwind.config.js`. Rounded, soft-shadow surfaces (`rounded-3xl`, `border-slate-200`, `shadow-sm`) on a `bg-slate-50` page; indigo is the primary accent; slate is the neutral ramp. Note Tailwind 4 spells gradients `bg-linear-to-br`, not `bg-gradient-to-br`.
+
+**Shared primitives.** Reach for `components/ui/` before writing new markup — `Button` (primary / secondary / ghost, with a built-in loading state), `Spinner`, and `FullPageLoader`. They hold the exact classes the landing page and modals already use, so new screens inherit the look rather than approximating it. The three role dashboards are all `PlaceholderDashboard` with different copy, which is why they stay visually identical without anyone maintaining three copies.
+
+**Page chrome belongs to the layout.** Authenticated pages render content only — `AppLayout` owns the `bg-slate-50` background, the header, and the `mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8` container. A page that adds its own wrapper will double the padding.
+
+**Role accents.** Shared indigo anchor, distinct hero gradient per role: seeker `from-indigo-600 via-indigo-500 to-sky-500`, recruiter `from-emerald-600 via-teal-600 to-indigo-600` (echoing the signup modal), admin `from-slate-800 via-slate-700 to-indigo-700`.
 
 **Responsiveness.** Mobile-first: base styles target small screens, then `sm:` / `lg:` widen. Containers use `mx-auto max-w-7xl px-4 sm:px-6 lg:px-8`.
 
@@ -321,7 +383,8 @@ Patterns already established in the codebase; follow them for consistency.
 
 - A thin wrapper that returns `null` when closed, so the content component **unmounts** — guaranteeing fresh form state, cleared errors, and no stale success banners on reopen.
 - Body scroll locked while mounted (`document.body.style.overflow = "hidden"`), restored on unmount. This is what fixed the double-scrollbar bug.
-- Fixed overlay: `fixed inset-0 z-50 … bg-slate-950/70 backdrop-blur-sm`.
+- Fixed overlay: `fixed inset-0 z-50 … bg-slate-950/70 backdrop-blur-sm` with `p-4 sm:p-6`.
+- **Height containment — three classes that must travel together.** The panel is `min-h-0 overflow-y-auto`, and its grid parent is `max-h-full grid-rows-[minmax(0,1fr)] overflow-hidden`. All three matter: a grid item's automatic minimum size is `auto`, so without `min-h-0` the panel refuses to shrink; and without the clamped row track the row is sized to its content, so the panel is never shorter than what it contains and `overflow-y-auto` produces no scrollbar at all. Get either wrong and the parent's `overflow-hidden` silently clips the modal's footer — which is exactly how the sign-in link disappeared once a server error banner grew the form. Prefer `max-h-full` over a hard-coded `calc(100dvh-2rem)`: it tracks the overlay's own responsive padding instead of drifting from it at `sm:`.
 
 **Forms.** `react-hook-form` with `mode: "onTouched"` so errors appear after a field is left rather than on every keystroke. Server errors and success messages live in local `useState`, separate from field-level errors. `isSubmitting` disables the submit control. Inputs share an `inputClass(hasError)` helper that swaps the border/ring colour to rose on error.
 
@@ -333,13 +396,13 @@ Patterns already established in the codebase; follow them for consistency.
 
 Worth knowing before you touch these areas.
 
-**Signup does not send `fullName`.** `signupUser()` in `src/api/authApi.js` sends only `email`, `password`, `role`, and optional `contactNo`. The backend's `CreateUserDto` now requires `fullName` (2–100 chars), and `SignupModal` already collects and validates it — it just isn't forwarded. Signup therefore fails with a `400` until `fullName` is added to the payload in both `authApi.js` and the modal's `onSubmit`. This is the first thing to fix.
+**Client and server disagree on the name length limit.** `SignupModal` caps `fullName` at 60 characters; the backend allows 100. The client is the stricter of the two, so this rejects some names the API would accept rather than letting a bad request through.
 
-**Recruiters land on the job seeker dashboard.** `App.jsx` renders `JobSeekerHomePage` for any authenticated user regardless of `user.role`. Signup offers a recruiter role, but there is no recruiter view to send them to.
+**Recruiter signup is disabled in the UI but open on the API.** `SignupModal` marks the recruiter option "coming soon", yet `POST /users/signup` accepts `role: "recruiter"` from any client. A recruiter registered via curl now gets a real dashboard, so this is cosmetic rather than broken — but the two sides should agree before launch.
 
-**The display name is derived from the email.** `JobSeekerHomePage` uses `user.email.split("@")[0]`. Now that the backend returns `fullName` on both signin and `/users/me`, prefer that with the email prefix as a fallback.
+**Landing nav links are inert.** The `Header` nav items are still `href="#"` placeholders. They need in-page anchors.
 
-**Landing nav links are inert.** The `Header` nav items are `href="#"` placeholders, and "Post a Job" has no handler. They need either in-page anchors or routes.
+**Admin has no profile endpoint.** `GET /profiles/me` rejects the admin role, so `AdminHomePage` deliberately avoids profile data. Any admin screen that needs it will need a backend change first.
 
 **No tests.** There is no test runner configured. Vitest plus React Testing Library would be the natural fit for a Vite project.
 
@@ -349,7 +412,7 @@ Worth knowing before you touch these areas.
 
 Tracks the PRD's phases, scoped to the frontend.
 
-**Phase 1 — MVP.** Fix the `fullName` payload gap. Add routing and role-aware layouts. Build the seeker profile editor and the resume upload experience — including a parsed-resume review UI that shows confidence and lets users correct every extracted field. Then job browsing with search and filters, a recommended-jobs feed, apply flow, and application status tracking. On the recruiter side: company setup, job authoring, the applicant pipeline with ranked candidates and shortlist/reject actions, and semantic candidate search. Every recommendation surface needs its explainability panel (matched skills, experience overlap, missing qualifications) from the start, plus event instrumentation for activation and CTR.
+**Phase 1 — MVP.** Routing and role-aware layouts are in place. Next: build the seeker profile editor and the resume upload experience — including a parsed-resume review UI that shows confidence and lets users correct every extracted field. Then job browsing with search and filters, a recommended-jobs feed, apply flow, and application status tracking. On the recruiter side: company setup, job authoring, the applicant pipeline with ranked candidates and shortlist/reject actions, and semantic candidate search. Every recommendation surface needs its explainability panel (matched skills, experience overlap, missing qualifications) from the start, plus event instrumentation for activation and CTR.
 
 **Phase 2 — Product-market fit.** Conversational career assistant for seekers (resume tips, job-fit Q&A, interview prep) and a recruiter copilot (rewrite JDs, generate screening questions, summarize pipelines). Saved searches, personalized alerts, recruiter collaboration, employer branding pages, and UI affordances that feed the ranking feedback loop — dismiss, not-interested, and shortlist signals.
 

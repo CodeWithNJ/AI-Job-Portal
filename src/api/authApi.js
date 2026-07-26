@@ -1,10 +1,18 @@
 import axiosClient from "./axiosClient";
 
 // POST /users/signup creates a new account. The backend's CreateUserDto
-// only accepts email, password, role, and an optional contactNo, so we
-// build the payload explicitly to avoid forbidNonWhitelisted errors.
-export const signupUser = async ({ email, password, role, contactNo }) => {
-  const payload = { email, password, role };
+// accepts fullName, email, password, role, and an optional contactNo — and
+// rejects anything else (forbidNonWhitelisted), so we build the payload
+// explicitly rather than forwarding the whole form (which carries
+// confirmPassword and acceptTerms).
+export const signupUser = async ({
+  fullName,
+  email,
+  password,
+  role,
+  contactNo,
+}) => {
+  const payload = { fullName, email, password, role };
   if (contactNo) {
     payload.contactNo = contactNo;
   }

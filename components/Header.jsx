@@ -1,4 +1,4 @@
-const Header = ({ onUploadResumeClick }) => {
+const Header = ({ onUploadResumeClick, onPostJobClick }) => {
   return (
     <>
       <header className="border-b border-slate-200 bg-white">
@@ -28,7 +28,11 @@ const Header = ({ onUploadResumeClick }) => {
             >
               Upload Resume to Match
             </button>
-            <button className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white">
+            <button
+              type="button"
+              onClick={onPostJobClick}
+              className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 hover:cursor-pointer"
+            >
               Post a Job
             </button>
           </div>

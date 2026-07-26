@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { signupUser } from "../src/api/authApi";
 import { extractApiErrorMessage } from "../src/api/axiosClient";
+import Spinner from "./ui/Spinner";
 
 const signupHighlights = [
   "Matched to roles based on your real experience",
@@ -76,10 +77,11 @@ const SignupModalContent = ({ onClose, onSignInClick, onSignupSuccess }) => {
     setSuccessMessage(null);
 
     try {
-      // The backend CreateUserDto does not accept fullName/confirmPassword and
-      // the global ValidationPipe runs with forbidNonWhitelisted: true, so we
-      // only send the fields it expects.
+      // The global ValidationPipe runs with forbidNonWhitelisted: true, so we
+      // send only the fields CreateUserDto declares — confirmPassword and
+      // acceptTerms are client-side concerns and would be rejected.
       await signupUser({
+        fullName: values.fullName.trim(),
         email: values.email,
         password: values.password,
         role: values.role,
@@ -120,8 +122,16 @@ const SignupModalContent = ({ onClose, onSignInClick, onSignupSuccess }) => {
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm sm:p-6"
       onClick={onClose}
     >
+      {/*
+        max-h-full tracks the overlay's own responsive padding (p-4 / sm:p-6)
+        instead of hard-coding it, and grid-rows-[minmax(0,1fr)] clamps the row
+        track to that height. Without the clamped track the row is sized to its
+        content, so the panel below never shrinks and its overflow-y-auto stays
+        inert — anything past the cap (the sign-in link, once a server error
+        banner appears) gets silently clipped by overflow-hidden.
+      */}
       <div
-        className="relative grid max-h-[calc(100dvh-2rem)] w-full max-w-5xl overflow-hidden rounded-3xl border border-white/60 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.18)] lg:grid-cols-[0.9fr_1.1fr]"
+        className="relative grid max-h-full w-full max-w-5xl grid-rows-[minmax(0,1fr)] overflow-hidden rounded-3xl border border-white/60 bg-white/95 shadow-[0_24px_80px_rgba(15,23,42,0.18)] lg:grid-cols-[0.9fr_1.1fr]"
         onClick={(event) => event.stopPropagation()}
       >
         <button
@@ -183,7 +193,9 @@ const SignupModalContent = ({ onClose, onSignInClick, onSignupSuccess }) => {
           </div>
         </div>
 
-        <div className="overflow-y-auto bg-white px-6 py-7 sm:px-10 sm:py-8">
+        {/* min-h-0 overrides the grid item's automatic minimum size, which is
+            what actually lets this column shrink and scroll. */}
+        <div className="min-h-0 overflow-y-auto bg-white px-6 py-7 sm:px-10 sm:py-8">
           <div className="mx-auto w-full max-w-md">
             <div className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
               Get started
@@ -275,7 +287,7 @@ const SignupModalContent = ({ onClose, onSignInClick, onSignupSuccess }) => {
                   <input
                     id="signup-password"
                     type="password"
-                    placeholder="At least 3 characters"
+                    placeholder="At least 8 characters"
                     autoComplete="new-password"
                     aria-invalid={errors.password ? "true" : "false"}
                     className={inputClass(Boolean(errors.password))}
@@ -431,29 +443,7 @@ const SignupModalContent = ({ onClose, onSignInClick, onSignupSuccess }) => {
                 disabled={isSubmitting}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-indigo-600 px-5 text-sm font-semibold text-white shadow-[0_16px_28px_rgba(79,70,229,0.24)] transition hover:bg-indigo-700 hover:cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {isSubmitting && (
-                  <svg
-                    className="h-4 w-4 animate-spin text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
-                    />
-                  </svg>
-                )}
+                {isSubmitting && <Spinner className="h-4 w-4 text-white" />}
                 {isSubmitting ? "Creating account..." : "Create Account"}
               </button>
             </form>
