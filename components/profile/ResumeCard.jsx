@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { extractApiErrorMessage } from "../../src/api/axiosClient";
-import { MAX_RESUME_MB, RESUME_MIME_TYPES } from "../../src/api/profileApi";
+import { maxResumeSize, RESUME_MIME_TYPES } from "../../src/api/profileApi";
 import { useUploadResume } from "../../src/profile/useProfileQueries";
 import Alert from "../ui/Alert";
 import Button from "../ui/Button";
@@ -50,8 +50,8 @@ const ResumeCard = ({ profile }) => {
       setLocalError("Only PDF and DOCX resumes are supported.");
       return;
     }
-    if (file.size > MAX_RESUME_MB * 1024 * 1024) {
-      setLocalError(`That file is over the ${MAX_RESUME_MB}MB limit.`);
+    if (file.size > maxResumeSize * 1024 * 1024) {
+      setLocalError(`That file is over the ${maxResumeSize}MB limit.`);
       return;
     }
 
@@ -130,7 +130,7 @@ const ResumeCard = ({ profile }) => {
             No resume uploaded yet
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            PDF or DOCX, up to {MAX_RESUME_MB}MB
+            PDF or DOCX, up to {maxResumeSize}MB
           </p>
         </button>
       )}

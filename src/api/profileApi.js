@@ -9,7 +9,8 @@ export const RESUME_MIME_TYPES = {
 };
 
 /** Mirrors MAX_RESUME_SIZE_MB on the API. */
-export const MAX_RESUME_MB = 10;
+// export const MAX_RESUME_MB = 10;
+export const maxResumeSize = Number(import.meta.env.VITE_MAX_RESUME_MB) || 5;
 
 /** GET /profiles/me → `{ role, profile }`; the API creates the row on first read. */
 export const fetchMyProfile = async () => {
